@@ -9,6 +9,10 @@ erlang:binary_to_term(Y).
 > X = { test, 42, 3.14159, [1, 2, 3], <<222, 173, 190, 239>> }.
 > io:format("~p~n", [term_to_binary(X)]).
 <<131,104,5,100,0,4,116,101,115,116,97,42,70,64,9,33,249,240,27,134,110,107,0,3,1,2,3,109,0,0,0,4,222,173,190,239>>
+
+> X2 = { test, 42, 3.14159, [1, 2, 3], <<"blabla">> }.
+> io:format("~p~n", [term_to_binary( X2  )]).
+<<131,104,5,100,0,4,116,101,115,116,97,42,70,64,9,33,249,240,27,134,110,107,0,3,1,2,3,109,0,0,0,6,98,108,97,98,108,97>>
 ```
 
 ```js
@@ -16,6 +20,9 @@ erlang:binary_to_term(Y).
 
 enc(tuple( atom('test'),  number(42), float(3.14159), list(1, 2, 3), bin( new Uint8Array([222, 173, 190, 239]) ) ) ); // bin('blabla'), bignum(bigInt(number))
 // Uint8Array(39)[131,104,5,118,0,4,116,101,115,116,97,42,70,64,9,33,249,240,27,134,110,108,0,0,0,3,106,106,106,106,109,0,0,0,4,222,173,190,239]
+
+enc(tuple( atom('test'),  number(42), float(3.14159), list(1, 2, 3), bin('blabla') ) );
+// Uint8Array(41) [131,104,5,118,0,4,116,101,115,116,97,42,70,64,9,33,249,240,27,134,110,108,0,0,0,3,106,106,106,106,109,0,0,0,6,98,108,97,98,108,97]
 ```
 
 ```d
@@ -79,6 +86,34 @@ void main(){
   auto decoder = BertDecoder(encoded);
   auto decoded = decoder.decode();
   writeln("Decoded: ", decoded.toString());
+  
+  if(decoded.type_ == BertType.Tuple){
+    auto decoded1 = decoded.tupleValue;
+    if(decoded1.length == 3){
+      
+      if(auto num1 = cast(uint8)decoded1[0].intValue){
+        writeln("num1 = ", num1, " ", typeof(num1).stringof); // enc(tuple( number(1), number(42), number(777) )); // Decoded: {1, 42, 777} // num1 = 1 ubyte
+      } // else do nothing
+      
+      if(auto str1 = cast(string)decoded1[1].binaryValue){
+        writeln("str1 = ", str1, " ", typeof(str1).stringof); // enc(tuple( number(1), bin('blabla'), number(777) )); // Decoded: {1, <<98,108,97,98,108,97>>, 777} // str1 = blabla string
+      } // else do nothing
+      
+      if(decoded1[2].type_ == BertType.List){
+        auto list1 = decoded1[2].listValue; // enc(tuple( number(1), bin('blabla'), list( number(1), number(2), number(3) ) )); // Decoded: {1, <<98,108,97,98,108,97>>, [1, 2, 3]}
+        if(list1.length == 3){
+          
+          if(auto num31 = cast(uint32)list1[0].intValue){
+            writeln("num31 = ", num31, " ", typeof(num31).stringof); // enc(tuple( number(1), bin('9'), list( number(1), number(2), number(3) ) )); // Decoded: {1, <<57>>, [1, 2, 3]} // num31 = 1 int
+          } // else do nothing
+        
+        } // else do nothing
+      
+      } // else do nothing
+    
+    } // else do nothing
+  } // else do nothing
+  
 }
 
 /*

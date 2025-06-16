@@ -103,7 +103,8 @@ struct BertValue{
         result.put("<<");
         foreach(i, b; binaryValue){
           if(i > 0){ result.put(","); }
-          result.put(format("%02X", b));
+          //result.put(format("%02X", b)); // string bytes in hex = <<"blabla">> = <<62,6C,61,62,6C,61>>
+          result.put(to!string(b)); // string bytes in dec (like in erlang) = <<"blabla">> = <<98,108,97,98,108,97>>
         }
         result.put(">>");
         return result.data;

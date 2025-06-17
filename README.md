@@ -26,42 +26,6 @@ enc(tuple( atom('test'),  number(42), float(3.14159), list(1, 2, 3), bin('blabla
 ```
 
 ```d
-// dlang oop
-
-import bert_oop;
-
-void main(){
-  // encode
-  auto data = bertTuple([
-    bertAtom("test"),
-    bertInt(42),
-    bertFloat(3.14159),
-    bertList([
-      bertInt(1),
-      bertInt(2),
-      bertInt(3)
-    ]),
-    bertBinary([0xDE, 0xAD, 0xBE, 0xEF])
-  ]);
-  
-  ubyte[] encoded = bertEncode(data);
-  writeln("Encoded: ", encoded);
-  
-  // decode
-  auto decoder = new BertDecoder(encoded);
-  auto decoded = decoder.decode();
-  writeln("Decoded: ", decoded.toString());
-}
-/*
-Encoded: [131, 104, 5, 118, 0, 4, 116, 101, 115, 116, 97, 42, 70, 64, 9, 33, 249, 240, 27, 134, 110, 108, 0, 0, 0, 3, 97, 1, 97, 2, 97, 3, 106, 109, 0, 0, 0, 4, 222, 173, 190, 239]
-Decoded: {'test', 42, 3.14159, [1, 2, 3], <<222,173,190,239>>}
-*/
-```
-
-
-```d
-// dlang fp
-
 import bert;
 
 void main(){

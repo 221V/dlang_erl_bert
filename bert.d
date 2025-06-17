@@ -624,9 +624,6 @@ struct BertDecoder{
     //  pos += 4;
     //}
     
-    writeln("642 n = ", n);
-    //writeln("n type = ", typeof(n).stringof);
-    
     if(pos >= data.length){ throw new Exception("Incomplete BIG sign"); }
     //sign = data[pos++]; // ignore sign - as unsigned
     pos++; // skip sign
@@ -650,42 +647,6 @@ struct BertDecoder{
       }else{ // ( n == 5) || (n == 6) || (n == 7) || (n == 8)
         return bertInt(value);
       }
-      
-      /*
-      if(n == 2){
-        auto value = cast(ushort)littleEndianToNative!ushort(data[pos..pos+2][0..2]);
-        pos += n;
-        return bertInt(value);
-      }else if(n == 3){
-        ubyte[] temp = data[pos..pos+3][0..3];
-        auto value = cast(uint)littleEndianToNative!uint( [ temp[0], temp[1], temp[2], cast(ubyte)0x00 ] );
-        pos += n;
-        return bertInt(value);
-      }else if(n == 4){
-        auto value = cast(uint)littleEndianToNative!uint(data[pos..pos+4][0..4]);
-        pos += n;
-        return bertInt( cast(uint)value );
-      }else if(n == 5){
-        ubyte[] temp = data[pos..pos+5][0..5];
-        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], cast(ubyte)0x00, cast(ubyte)0x00, cast(ubyte)0x00 ] );
-        pos += n;
-        return bertInt(value);
-      }else if(n == 6){
-        ubyte[] temp = data[pos..pos+6][0..6];
-        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], cast(ubyte)0x00, cast(ubyte)0x00 ] );
-        pos += n;
-        return bertInt(value);
-      }else if(n == 7){
-        ubyte[] temp = data[pos..pos+7][0..7];
-        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], cast(ubyte)0x00 ] );
-        pos += n;
-        return bertInt(value);
-      }else{ // n == 8
-        auto value = cast(ulong)littleEndianToNative!ulong(data[pos..pos+8][0..8]);
-        pos += n;
-        return bertInt(value);
-      }
-      */
       
       //return bertInt(sign ? (-cast(long)value) : cast(long)value);
     

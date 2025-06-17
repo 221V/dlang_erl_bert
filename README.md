@@ -63,6 +63,22 @@ void main(){
         writeln("str1 = ", str1, " ", typeof(str1).stringof); // enc(tuple( number(1), bin('blabla'), number(777) )); // Decoded: {1, <<98,108,97,98,108,97>>, 777} // str1 = blabla string
       } // else do nothing
       
+      // var big_value = bigInt("61196067033413");
+      // enc(tuple( number(1), bin('9'), bignum( big_value ) )); // got as long for auto
+      if(decoded1[2].type_ == BertType.Int){
+        if(auto num3 = decoded1[2].intValue){
+          writeln("num3 = ", num3, " ", typeof(num3).stringof); // ws.send(enc(tuple( number(1), bin('9'), number(1) ))); // Decoded: {1, <<57>>, 1} // num3 = 1 long
+        } // else do nothing
+      } // else do nothing
+      
+      // var big_value = bigInt("6119606703341361196067033413");
+      // enc(tuple( number(1), bin('9'), bignum( big_value ) )); // got as BigInt
+      if(decoded1[2].type_ == BertType.BigInt){
+        if(auto num3b = decoded1[2].bigintValue){
+          writeln("num3b = ", num3b, " ", typeof(num3b).stringof); // Decoded: {1, <<57>>, 6119606703341361196067033413} // num3b = 6119606703341361196067033413 BigInt
+        } // else do nothing
+      } // else do nothing
+      
       if(decoded1[2].type_ == BertType.List){
         auto list1 = decoded1[2].listValue; // enc(tuple( number(1), bin('blabla'), list( number(1), number(2), number(3) ) )); // Decoded: {1, <<98,108,97,98,108,97>>, [1, 2, 3]}
         if(list1.length == 3){

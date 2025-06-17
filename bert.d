@@ -1,23 +1,57 @@
-
 import std.stdio;
-import std.conv;
-import std.bitmanip;
-import std.string;
-import std.utf;
-import std.math;
-import std.traits;
-import std.algorithm;
-import std.range;
-import std.digest : toHexString;
-import std.array : appender;
-import std.format : format;
+
+public{
+  import std.bigint; // *10-15 times more slow than gmp but this works -- gmp-d conflicts with other deps ((
+  import std.conv;
+  
+/*
+// example std.bigint usage
+  //BigInt num2 = 1;
+  //auto num1 = 1;
+  auto num1 = "1";
+  BigInt num2 = BigInt(num1);
+  num2 += 2;
+
+  string num3 = num2.to!string;
+  
+  writefln("num2 = %s - %s", num2, typeof(num2).stringof);
+  writefln("num3 = %s - %s", num3, typeof(num3).stringof);
+  
+  BigInt num = 0;
+  for(ulong i = 1; i < 4_000_001; i++){
+    num += i;
+  }
+  
+  writefln("SUM(1, 4_000_000) = %s", num);
+
+  num = 1;
+  for(ubyte j = 1; j < 101; j++){
+    num *= j;
+  }
+  
+  writefln("PRODUCT(1, 100) = %s", num);
+*/
+}
+
+private{
+  import std.bitmanip;
+  import std.string;
+  import std.utf;
+  import std.math;
+  import std.traits;
+  import std.algorithm;
+  import std.range;
+  import std.digest : toHexString;
+  import std.array : appender;
+  import std.format : format;
+}
 
 enum BERT_TAG : ubyte{
   VERSION        = 131,
   SMALL_INT      = 97,
   INT            = 98,
   BIGINT         = 110,
-  LARGE_BIG      = 111,
+  //LARGE_BIG      = 111,
   FLOAT          = 70,
   ATOM           = 118,
   TUPLE          = 104, // SMALL_TUPLE
@@ -30,6 +64,7 @@ enum BERT_TAG : ubyte{
 
 enum BertType{
   Int,
+  BigInt,
   Float,
   Atom,
   Tuple,
@@ -45,6 +80,7 @@ struct BertValue{
   
   union{
     long intValue;
+    BigInt bigintValue;
     double floatValue;
     string atomValue;
     BertValue[] tupleValue;
@@ -57,6 +93,9 @@ struct BertValue{
     final switch(type_){
       case BertType.Int:
         return encodeInt(intValue);
+      
+      case BertType.BigInt:
+        return encodeBigInt(bigintValue);
       
       case BertType.Float:
         return encodeFloat(floatValue);
@@ -85,6 +124,9 @@ struct BertValue{
     final switch(type_){
       case BertType.Int:
         return to!string(intValue);
+        
+      case BertType.BigInt:
+        return bigintValue.to!string;
       
       case BertType.Float:
         return to!string(floatValue);
@@ -127,10 +169,77 @@ ubyte[] bertEncode(BertValue term){
   return [cast(ubyte)BERT_TAG.VERSION] ~ term.encode();
 }
 
-ubyte[] encodeInt(long value){
+/*
+ubyte[] encodeInt(byte value){ // small_integer - int8
+  return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+}
+*/
+
+ubyte[] encodeInt(ubyte value){ // small_integer - uint8
+  return [cast(ubyte)BERT_TAG.SMALL_INT, value];
+}
+
+/*
+ubyte[] encodeInt(short value){ // integer - int16
+  if(value >= 0 && value <= 255){
+    return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+  }else{
+    ubyte[4] bytes = nativeToBigEndian!int(cast(int)value);
+    return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
+  }
+}
+*/
+
+ubyte[] encodeInt(ushort value){ // integer - uint16
+  if(value <= 255) {
+    return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+  }else{
+    ubyte[4] bytes = nativeToBigEndian!int(cast(int)value);
+    return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
+  }
+}
+
+/*
+ubyte[] encodeInt(int value){ // integer - int32
   if(value >= 0 && value <= 255){
     return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
   }else if(value >= -2147483648 && value <= 2147483647){
+    ubyte[4] bytes = nativeToBigEndian!int(value);
+    return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
+  }else{
+    return encodeBigInt( cast(ulong)value );
+  }
+}
+*/
+
+ubyte[] encodeInt(uint value){ // integer - uint32
+  if(value <= 255){
+    return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+  }else if(value <= 2147483647) {
+    ubyte[4] bytes = nativeToBigEndian!int(cast(int)value);
+    return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
+  }else{
+    return encodeBigInt( cast(ulong)value );
+  }
+}
+
+/*
+ubyte[] encodeInt(long value){ // integer - small_big_int - int64 ;; we do not use erlang large_big_int because small_big_int max value = 2^(8*255) - 1 ;; it is too enaught
+  if(value >= 0 && value <= 255){
+    return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+  }else if(value >= -2147483648 && value <= 2147483647){
+    ubyte[4] bytes = nativeToBigEndian!int(cast(int)value);
+    return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
+  }else{
+    return encodeBigInt( cast(ulong)value );
+  }
+}
+*/
+
+ubyte[] encodeInt(ulong value){ // integer - small_big_int - uint64 ;; we do not use erlang large_big_int because small_big_int max value = 2^(8*255) - 1 ;; it is too enaught
+  if(value <= 255){
+    return [cast(ubyte)BERT_TAG.SMALL_INT, cast(ubyte)value];
+  }else if(value <= 2147483647){
     ubyte[4] bytes = nativeToBigEndian!int(cast(int)value);
     return [cast(ubyte)BERT_TAG.INT] ~ bytes[];
   }else{
@@ -138,6 +247,7 @@ ubyte[] encodeInt(long value){
   }
 }
 
+/*
 ubyte[] encodeBigInt(long value){
   bool isNegative = (value < 0);
   ulong absValue = isNegative ? (-value) : value;
@@ -158,7 +268,69 @@ ubyte[] encodeBigInt(long value){
   foreach_reverse(i; 0..len){
     result ~= temp[i];
   }
+  return result;
+}
+*/
+
+ubyte[] encodeBigInt(ulong value){
+  ubyte[8] temp;
+  size_t len = 0;
   
+  while(value > 0){
+    temp[len++] = cast(ubyte)(value & 0xFF);
+    value >>= 8;
+  }
+  
+  if(len == 0){
+    return [ cast(ubyte)BERT_TAG.BIGINT, 1, 0, 0 ];
+  }
+  
+  ubyte[] result = [
+    cast(ubyte)BERT_TAG.BIGINT,
+    cast(ubyte)len,
+    0
+  ];
+  
+  foreach_reverse (i; 0..len){
+    result ~= temp[i];
+  }
+  return result;
+}
+
+ubyte[] encodeBigInt(BigInt value){
+  if(value == 0){
+    return [cast(ubyte)BERT_TAG.BIGINT, 1, 0];
+  }
+  
+  //bool isNegative = value < 0; // no sign
+  //if(isNegative){
+  //  value = -value;
+  //}
+  
+  ubyte[] digits;
+  while(value > 0){
+    digits ~= cast(ubyte)(value & 0xFF);
+    value >>= 8;
+  }
+  
+  /* // we do not use erlang large_big_int because small_big_int max value = 2^(8*255) - 1 ;; it is too enaught
+  ubyte tag;
+  if(digits.length <= 255) {
+    tag = BERT_TAG.BIGINT;
+  }else{
+    tag = BERT_TAG.LARGE_BIGINT;
+  }
+  */
+  
+  ubyte[] result;
+  //if(tag == BERT_TAG.BIGINT){
+    result = [ cast(ubyte)BERT_TAG.BIGINT,
+      cast(ubyte)digits.length,
+      //cast(ubyte)(isNegative ? 1 : 0) // no sign
+      cast(ubyte)(0) // no sign
+    ];
+  
+  result ~= digits; // in little-endian
   return result;
 }
 
@@ -206,10 +378,74 @@ ubyte[] encodeMap(const BertValue[BertValue] map){
   return [cast(ubyte)BERT_TAG.MAP] ~ lenBytes[] ~ map.byPair.map!(p => p.key.encode() ~ p.value.encode()).join();
 }
 
+/*
+BertValue bertInt(byte value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+*/
+
+BertValue bertInt(ubyte value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+
+/*
+BertValue bertInt(short value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+*/
+
+BertValue bertInt(ushort value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+
+/*
+BertValue bertInt(int value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+*/
+
+BertValue bertInt(uint value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+
+/*
 BertValue bertInt(long value){
   BertValue v;
   v.type_ = BertType.Int;
   v.intValue = value;
+  return v;
+}
+*/
+
+BertValue bertInt(ulong value){
+  BertValue v;
+  v.type_ = BertType.Int;
+  v.intValue = value;
+  return v;
+}
+
+BertValue bertBigInt(BigInt value){
+  BertValue v;
+  v.type_ = BertType.BigInt;
+  v.bigintValue = value;
   return v;
 }
 
@@ -267,28 +503,41 @@ struct BertDecoder{
   size_t pos;
   
   BertValue decode(){
-    if(pos >= data.length){ throw new Exception("No data to decode"); }
-    if(data[pos++] != BERT_TAG.VERSION){
-      throw new Exception("Invalid BERT format: missing version byte");
+    try{
+      if(pos >= data.length){ throw new Exception("No data to decode"); }
+      if(data[pos++] != BERT_TAG.VERSION){
+        throw new Exception("Invalid BERT format: missing version byte");
+      }
+      
+      return decodeValue();
+    
+    }catch (Exception e){
+      writeln("Got error: ", e.msg);
+      return bertNil();
     }
-    return decodeValue();
   }
   
   private BertValue decodeValue(){
     if(pos >= data.length){ throw new Exception("Unexpected end of data"); }
-    
     ubyte tag = data[pos++];
     
     switch(tag){
       case BERT_TAG.SMALL_INT:
         if(pos >= data.length){ throw new Exception("Incomplete SMALL_INT"); }
-        return bertInt(data[pos++]);
+        return bertInt( cast(ubyte)data[pos++] );
       
       case BERT_TAG.INT:
         if((pos + 4) > data.length){ throw new Exception("Incomplete INT"); }
-        int value = bigEndianToNative!int(data[pos..pos+4][0..4]);
+        uint value = bigEndianToNative!uint(data[pos..pos+4][0..4]);
         pos += 4;
-        return bertInt(value);
+        
+        if(value <= ubyte.max){ // maybe can to ubyte, ushort
+          return bertInt( cast(ubyte)value );
+        }else if(value <= ushort.max){
+          return bertInt( cast(ushort)value );
+        }else{ // uint
+          return bertInt(value);
+        }
       
       case BERT_TAG.FLOAT:
         if((pos + 8) > data.length){ throw new Exception("Incomplete FLOAT"); }
@@ -341,8 +590,8 @@ struct BertDecoder{
         return bertNil();
       
       case BERT_TAG.BIGINT:
-      case BERT_TAG.LARGE_BIG:
-        return decodeBigInt(tag);
+      //case BERT_TAG.LARGE_BIG:
+        return decodeBigInt();
       
       case BERT_TAG.MAP:
         if((pos + 4) > data.length){ throw new Exception("Incomplete MAP size"); }
@@ -361,30 +610,95 @@ struct BertDecoder{
     }
   }
   
-  private BertValue decodeBigInt(ubyte tag){
-    uint n;
-    ubyte sign;
+  //private BertValue decodeBigInt(ubyte tag){ // BIGINT, not use LARGE_BIG
+  private BertValue decodeBigInt(){ // BIGINT, not use LARGE_BIG
+    //uint n;
+    //ubyte sign; // ignore sign - as unsigned
     
-    if(tag == BERT_TAG.BIGINT){
+    //if(tag == BERT_TAG.BIGINT){
       if(pos >= data.length){ throw new Exception("Incomplete BIGINT"); }
-      n = data[pos++];
-    }else{
-      if((pos + 4) > data.length){ throw new Exception("Incomplete LARGE_BIG size"); }
-      n = bigEndianToNative!uint(data[pos..pos+4][0..4]);
-      pos += 4;
-    }
+      uint n = data[pos++];
+    //}else{
+    //  if((pos + 4) > data.length){ throw new Exception("Incomplete LARGE_BIG size"); }
+    //  n = bigEndianToNative!uint(data[pos..pos+4][0..4]);
+    //  pos += 4;
+    //}
+    
+    writeln("642 n = ", n);
+    //writeln("n type = ", typeof(n).stringof);
     
     if(pos >= data.length){ throw new Exception("Incomplete BIG sign"); }
-    sign = data[pos++];
+    //sign = data[pos++]; // ignore sign - as unsigned
+    pos++; // skip sign
     
     if((pos + n) > data.length){ throw new Exception("Incomplete BIG data"); }
-    ulong value = 0;
     
-    foreach_reverse(i; 0..n){
-      value = (value << 8) | data[pos++];
+    if(n <= 8){ // maybe can to ubyte, ushort, uint, ulong
+      if(n == 1){
+        return bertInt( cast(ubyte)data[pos++] );
+      }
+      
+      ulong value = 0;
+      foreach(i; 0..n){
+        value += cast(ulong)data[pos++] << (8 * i);
+      }
+      
+      if(n == 2){
+        return bertInt( cast(ushort)value );
+      }else if( (n == 3) || (n == 4) ){
+        return bertInt( cast(uint)value );
+      }else{ // ( n == 5) || (n == 6) || (n == 7) || (n == 8)
+        return bertInt(value);
+      }
+      
+      /*
+      if(n == 2){
+        auto value = cast(ushort)littleEndianToNative!ushort(data[pos..pos+2][0..2]);
+        pos += n;
+        return bertInt(value);
+      }else if(n == 3){
+        ubyte[] temp = data[pos..pos+3][0..3];
+        auto value = cast(uint)littleEndianToNative!uint( [ temp[0], temp[1], temp[2], cast(ubyte)0x00 ] );
+        pos += n;
+        return bertInt(value);
+      }else if(n == 4){
+        auto value = cast(uint)littleEndianToNative!uint(data[pos..pos+4][0..4]);
+        pos += n;
+        return bertInt( cast(uint)value );
+      }else if(n == 5){
+        ubyte[] temp = data[pos..pos+5][0..5];
+        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], cast(ubyte)0x00, cast(ubyte)0x00, cast(ubyte)0x00 ] );
+        pos += n;
+        return bertInt(value);
+      }else if(n == 6){
+        ubyte[] temp = data[pos..pos+6][0..6];
+        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], cast(ubyte)0x00, cast(ubyte)0x00 ] );
+        pos += n;
+        return bertInt(value);
+      }else if(n == 7){
+        ubyte[] temp = data[pos..pos+7][0..7];
+        auto value = cast(ulong)littleEndianToNative!ulong( [ temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], cast(ubyte)0x00 ] );
+        pos += n;
+        return bertInt(value);
+      }else{ // n == 8
+        auto value = cast(ulong)littleEndianToNative!ulong(data[pos..pos+8][0..8]);
+        pos += n;
+        return bertInt(value);
+      }
+      */
+      
+      //return bertInt(sign ? (-cast(long)value) : cast(long)value);
+    
+    }else{ // just bigint
+      BigInt value = 0;
+      
+      foreach(i; 0..n){
+        value += BigInt(data[pos++]) << (8 * i);
+      }
+      
+      return bertBigInt(value);
     }
-    
-    return bertInt(sign ? (-cast(long)value) : cast(long)value);
+  
   }
 }
 
